@@ -1,0 +1,18 @@
+# Build output (from build_ipa.sh)
+build/
+
+# Xcode
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xccheckout
+*.moved-aside
+*.xcscmblueprint
+*.xccheckout
+
+# macOS
+.DS_Store
+
+# Swift Package Manager
+.build/
+.swiftpm/
