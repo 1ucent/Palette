@@ -342,17 +342,15 @@ final class BluetoothManager: NSObject, ObservableObject {
     }
 
     private func publishPowerState(_ on: Bool) {
-        let apply = { [weak self] in
+        DispatchQueue.main.async { [weak self] in
             self?.isPowerOn = on
         }
-        if Thread.isMainThread { apply() } else { DispatchQueue.main.async(execute: apply) }
     }
 
     private func publishColor(r: UInt8, g: UInt8, b: UInt8) {
-        let apply = { [weak self] in
+        DispatchQueue.main.async { [weak self] in
             self?.lastColor = IndexedColor(r: r, g: g, b: b)
         }
-        if Thread.isMainThread { apply() } else { DispatchQueue.main.async(execute: apply) }
     }
 
     // MARK: Static Helpers
