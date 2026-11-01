@@ -173,18 +173,18 @@ final class BluetoothManager: NSObject, ObservableObject {
 
     // MARK: Command Emitters (mirrors CommandUtils.kt)
 
-    /// Sets brightness as a percentage (0...100).
+    /// Sets brightness as a percentage (0...100). Values are coerced into range.
     /// Frame: [7E,04,01,v,FF,FF,FF,00,EF]
     func setBrightness(_ value: Int) {
-        let v = UInt8(clamping: Swift.max(0, value))
+        let v = UInt8(clamping: Swift.min(100, Swift.max(0, value)))
         let frame: [UInt8] = [0x7E, 0x04, 0x01, v, 0xFF, 0xFF, 0xFF, 0x00, 0xEF]
         writeFrame(frame)
     }
 
-    /// Sets pattern playback speed as a percentage (0...100).
+    /// Sets pattern playback speed as a percentage (0...100). Values are coerced into range.
     /// Frame: [7E,04,02,v,FF,FF,FF,00,EF]
     func setSpeed(_ value: Int) {
-        let v = UInt8(clamping: Swift.max(0, value))
+        let v = UInt8(clamping: Swift.min(100, Swift.max(0, value)))
         let frame: [UInt8] = [0x7E, 0x04, 0x02, v, 0xFF, 0xFF, 0xFF, 0x00, 0xEF]
         writeFrame(frame)
     }

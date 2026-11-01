@@ -72,6 +72,10 @@ struct SettingsView: View {
         .padding(.top, 8)
     }
 
+    private var isConnected: Bool {
+        bluetooth.connectionState == .connected
+    }
+
     private var brightnessSection: some View {
         sectionCard(title: "BRIGHTNESS") {
             VStack(spacing: 14) {
@@ -83,10 +87,12 @@ struct SettingsView: View {
                 Slider(value: $brightness, in: 0...1)
                     .tint(.white.opacity(0.85))
                     .onChange(of: brightness) { _, newValue in
+                        guard isConnected else { return }
                         bluetooth.setBrightness(Int((newValue * 100).rounded()))
                     }
             }
         }
+        .opacity(isConnected ? 1.0 : 0.45)
     }
 
     private var speedSection: some View {
@@ -100,10 +106,12 @@ struct SettingsView: View {
                 Slider(value: $speed, in: 0...1)
                     .tint(.white.opacity(0.85))
                     .onChange(of: speed) { _, newValue in
+                        guard isConnected else { return }
                         bluetooth.setSpeed(Int((newValue * 100).rounded()))
                     }
             }
         }
+        .opacity(isConnected ? 1.0 : 0.45)
     }
 
     private var patternSection: some View {
@@ -116,14 +124,17 @@ struct SettingsView: View {
             .pickerStyle(.wheel)
             .frame(height: 120)
             .onChange(of: selectedPattern) { _, newValue in
+                guard isConnected else { return }
                 bluetooth.setPattern(newValue)
             }
         }
+        .opacity(isConnected ? 1.0 : 0.45)
     }
 
     private var clockSection: some View {
         sectionCard(title: "CLOCK") {
             Button {
+                guard isConnected else { return }
                 bluetooth.syncTime()
             } label: {
                 HStack {
@@ -222,6 +233,7 @@ struct SettingsView: View {
     }
 
     private func applySchedule() {
+        guard isConnected else { return }
         bluetooth.setTiming(
             hour: timingHour,
             minute: timingMinute,
