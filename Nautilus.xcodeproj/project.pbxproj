@@ -12,6 +12,14 @@
 		A10000000000000000000003 /* BluetoothManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* BluetoothManager.swift */; };
 		A10000000000000000000004 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013 /* Assets.xcassets */; };
 		A10000000000000000000005 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000017 /* SettingsView.swift */; };
+		A10000000000000000000006 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000018 /* Models.swift */; };
+		A10000000000000000000007 /* LEDStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000019 /* LEDStore.swift */; };
+		A10000000000000000000008 /* ConnectionSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000026 /* ConnectionSettingsView.swift */; };
+		A10000000000000000000009 /* CustomPatternsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000021 /* CustomPatternsView.swift */; };
+		A1000000000000000000000A /* PatternEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000022 /* PatternEditorView.swift */; };
+		A1000000000000000000000B /* RoutinesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000023 /* RoutinesView.swift */; };
+		A1000000000000000000000C /* RoutineEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000024 /* RoutineEditorView.swift */; };
+		A1000000000000000000000D /* RoutineScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000025 /* RoutineScheduler.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -23,6 +31,14 @@
 		A10000000000000000000015 /* Nautilus.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Nautilus.entitlements; sourceTree = "<group>"; };
 		A10000000000000000000016 /* Nautilus.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Nautilus.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000017 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A10000000000000000000018 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		A10000000000000000000019 /* LEDStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LEDStore.swift; sourceTree = "<group>"; };
+		A10000000000000000000026 /* ConnectionSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionSettingsView.swift; sourceTree = "<group>"; };
+		A10000000000000000000021 /* CustomPatternsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomPatternsView.swift; sourceTree = "<group>"; };
+		A10000000000000000000022 /* PatternEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatternEditorView.swift; sourceTree = "<group>"; };
+		A10000000000000000000023 /* RoutinesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutinesView.swift; sourceTree = "<group>"; };
+		A10000000000000000000024 /* RoutineEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutineEditorView.swift; sourceTree = "<group>"; };
+		A10000000000000000000025 /* RoutineScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutineScheduler.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -51,6 +67,14 @@
 				A10000000000000000000011 /* ContentView.swift */,
 				A10000000000000000000012 /* BluetoothManager.swift */,
 				A10000000000000000000017 /* SettingsView.swift */,
+				A10000000000000000000018 /* Models.swift */,
+				A10000000000000000000019 /* LEDStore.swift */,
+				A10000000000000000000026 /* ConnectionSettingsView.swift */,
+				A10000000000000000000021 /* CustomPatternsView.swift */,
+				A10000000000000000000022 /* PatternEditorView.swift */,
+				A10000000000000000000023 /* RoutinesView.swift */,
+				A10000000000000000000024 /* RoutineEditorView.swift */,
+				A10000000000000000000025 /* RoutineScheduler.swift */,
 				A10000000000000000000013 /* Assets.xcassets */,
 				A10000000000000000000014 /* Info.plist */,
 				A10000000000000000000015 /* Nautilus.entitlements */,
@@ -139,6 +163,14 @@
 				A10000000000000000000002 /* ContentView.swift in Sources */,
 				A10000000000000000000003 /* BluetoothManager.swift in Sources */,
 				A10000000000000000000005 /* SettingsView.swift in Sources */,
+				A10000000000000000000006 /* Models.swift in Sources */,
+				A10000000000000000000007 /* LEDStore.swift in Sources */,
+				A10000000000000000000008 /* ConnectionSettingsView.swift in Sources */,
+				A10000000000000000000009 /* CustomPatternsView.swift in Sources */,
+				A1000000000000000000000A /* PatternEditorView.swift in Sources */,
+				A1000000000000000000000B /* RoutinesView.swift in Sources */,
+				A1000000000000000000000C /* RoutineEditorView.swift in Sources */,
+				A1000000000000000000000D /* RoutineScheduler.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -18,6 +18,18 @@ enum BLEConnectionState: Equatable {
     case disconnected
 }
 
+// MARK: - Discovered Device (scan result)
+
+struct DiscoveredDevice: Identifiable, Equatable {
+    let id: String          // peripheral UUID string
+    let name: String
+    let peripheral: CBPeripheral
+
+    static func == (lhs: DiscoveredDevice, rhs: DiscoveredDevice) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
 // MARK: - Indexed Color
 
 /// Immutable RGB color value used across the manager. Replaces ad-hoc tuples so
@@ -43,6 +55,10 @@ final class BluetoothManager: NSObject, ObservableObject {
     @Published private(set) var connectionState: BLEConnectionState = .disconnected
     @Published private(set) var isPowerOn: Bool = false
     @Published private(set) var lastColor: IndexedColor = IndexedColor(r: 255, g: 255, b: 255)
+    /// Peripherals discovered during the latest scan (for the connection page).
+    @Published private(set) var discoveredDevices: [DiscoveredDevice] = []
+    /// UUID string of the currently connected peripheral (nil when disconnected).
+    @Published private(set) var connectedPeripheralUUID: String?
 
     // MARK: BLE Constants
 
@@ -100,30 +116,60 @@ final class BluetoothManager: NSObject, ObservableObject {
         bleQueue.async { [weak self] in
             guard let self else { return }
             guard self.centralManager.state == .poweredOn else { return }
-            guard self.targetPeripheral == nil else {
-                // Already have a peripheral; ensure we are connecting/connected.
-                if let peripheral = self.targetPeripheral,
-                   peripheral.state == .disconnected {
-                    self.centralManager.connect(peripheral, options: nil)
-                }
-                return
-            }
 
+            self.clearDiscoveredDevices()
             self.updateConnectionState(.scanning)
 
-            // Scan for both the specific name and the service UUID, tolerating
-            // peripherals that advertise either.
-            let knownService = [Self.serviceUUID]
+            // Scan for the service UUID and also run a name-agnostic pass so we
+            // can catch devices that do not advertise the service UUID reliably.
             self.centralManager.scanForPeripherals(
-                withServices: knownService,
+                withServices: [Self.serviceUUID],
                 options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
             )
-            // Also run a name-agonistic pass so we can catch devices that do not
-            // advertise the service UUID reliably.
             self.centralManager.scanForPeripherals(
                 withServices: nil,
                 options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
             )
+        }
+    }
+
+    /// Connect to a discovered peripheral by its UUID string.
+    func connect(to uuid: String) {
+        bleQueue.async { [weak self] in
+            guard let self else { return }
+            guard let peripheral = self.discoveredPeripheral(uuid: uuid) else { return }
+            self.stopScanningInternal()
+            self.targetPeripheral = peripheral
+            peripheral.delegate = self
+            self.centralManager.connect(peripheral, options: nil)
+        }
+    }
+
+    // MARK: Discovery helpers
+
+    private func discoveredPeripheral(uuid: String) -> CBPeripheral? {
+        discoveredDevices.first { $0.id == uuid }?.peripheral
+    }
+
+    private func stopScanningInternal() {
+        if centralManager.isScanning {
+            centralManager.stopScan()
+        }
+    }
+
+    private func clearDiscoveredDevices() {
+        DispatchQueue.main.async { [weak self] in
+            self?.discoveredDevices = []
+        }
+    }
+
+    private func addDiscovered(peripheral: CBPeripheral, name: String) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            let id = peripheral.identifier.uuidString
+            if !self.discoveredDevices.contains(where: { $0.id == id }) {
+                self.discoveredDevices.append(DiscoveredDevice(id: id, name: name, peripheral: peripheral))
+            }
         }
     }
 
@@ -239,6 +285,62 @@ final class BluetoothManager: NSObject, ObservableObject {
         let c = UInt8(clamping: Swift.max(0, thirdWire))
         let frame: [UInt8] = [0x7E, 0x06, 0x81, a, b, c, 0xFF, 0x00, 0xEF]
         writeFrame(frame)
+    }
+
+    // MARK: Custom Pattern Playback
+
+    /// Plays a custom color sequence, writing each step's color to the strip
+    /// with the step's own duration. Loops if `pattern.loops` is true.
+    private var patternPlayTask: Task<Void, Never>?
+
+    func playPattern(_ pattern: CustomPattern) {
+        patternPlayTask?.cancel()
+
+        guard !pattern.steps.isEmpty, targetPeripheral != nil else { return }
+
+        patternPlayTask = Task { [weak self] in
+            guard let self else { return }
+            var index = 0
+            while !Task.isCancelled {
+                let step = pattern.steps[index]
+                self.sendColor(r: UInt8(clamping: Int(step.red * 255)),
+                               g: UInt8(clamping: Int(step.green * 255)),
+                               b: UInt8(clamping: Int(step.blue * 255)))
+                try? await Task.sleep(nanoseconds: UInt64(step.duration * 1_000_000_000))
+                if Task.isCancelled { break }
+                index += 1
+                if index >= pattern.steps.count {
+                    if pattern.loops {
+                        index = 0
+                    } else {
+                        break
+                    }
+                }
+            }
+        }
+    }
+
+    func stopPatternPlayback() {
+        patternPlayTask?.cancel()
+        patternPlayTask = nil
+    }
+
+    /// Executes a routine action against the connected strip.
+    func runRoutine(_ routine: Routine, patterns: [CustomPattern]) {
+        switch routine.action {
+        case .powerOn:
+            turnOn()
+        case .powerOff:
+            turnOff()
+        case .color:
+            sendColor(r: UInt8(clamping: Int(routine.red * 255)),
+                      g: UInt8(clamping: Int(routine.green * 255)),
+                      b: UInt8(clamping: Int(routine.blue * 255)))
+        case .pattern:
+            if let pid = routine.patternID, let pattern = patterns.first(where: { $0.id == pid }) {
+                playPattern(pattern)
+            }
+        }
     }
 
     // MARK: Color Flush Timer
@@ -376,18 +478,11 @@ final class BluetoothManager: NSObject, ObservableObject {
             || (peripheral.name == Self.targetDeviceName)
         let serviceMatches = advertisedServices?.contains(Self.serviceUUID) == true
 
+        // Only surface devices that match our known strip (name or service).
         guard nameMatches || serviceMatches else { return }
-        guard targetPeripheral == nil else { return }
 
-        targetPeripheral = peripheral
-        peripheral.delegate = self
-
-        if centralManager.isScanning {
-            centralManager.stopScan()
-        }
-
-        updateConnectionState(.scanning)
-        centralManager.connect(peripheral, options: nil)
+        let name = advertisedName ?? peripheral.name ?? "LED Strip"
+        addDiscovered(peripheral: peripheral, name: name)
     }
 }
 
@@ -420,6 +515,7 @@ extension BluetoothManager: CBCentralManagerDelegate {
     }
 
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
+        connectedPeripheralUUID = peripheral.identifier.uuidString
         peripheral.discoverServices([Self.serviceUUID])
     }
 
@@ -428,6 +524,7 @@ extension BluetoothManager: CBCentralManagerDelegate {
                         error: Error?) {
         targetPeripheral = nil
         writeCharacteristic = nil
+        connectedPeripheralUUID = nil
         didAutoSyncTime = false
         updateConnectionState(.disconnected)
         startScanning()
@@ -439,6 +536,7 @@ extension BluetoothManager: CBCentralManagerDelegate {
         targetPeripheral = nil
         writeCharacteristic = nil
         lastTransmittedColor = nil
+        connectedPeripheralUUID = nil
         didAutoSyncTime = false
         updateConnectionState(.disconnected)
         // Auto-reconnect by restarting the scan.

@@ -12,6 +12,7 @@ import SwiftUI
 struct NautilusApp: App {
 
     @StateObject private var bluetooth: BluetoothManager = BluetoothManager()
+    @StateObject private var store: LEDStore = LEDStore()
 
     var body: some Scene {
         WindowGroup {
@@ -21,12 +22,28 @@ struct NautilusApp: App {
                         Label("Dashboard", systemImage: "slider.horizontal.3")
                     }
 
+                CustomPatternsView()
+                    .tabItem {
+                        Label("Patterns", systemImage: "circle.hexagongrid.fill")
+                    }
+
+                RoutinesView()
+                    .tabItem {
+                        Label("Routines", systemImage: "clock.fill")
+                    }
+
+                ConnectionSettingsView()
+                    .tabItem {
+                        Label("Lights", systemImage: "lightbulb.fill")
+                    }
+
                 SettingsView()
                     .tabItem {
                         Label("Settings", systemImage: "gear")
                     }
             }
             .environmentObject(bluetooth)
+            .environmentObject(store)
             .preferredColorScheme(.dark)
             .onAppear {
                 configureAppearance()
