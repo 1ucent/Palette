@@ -72,6 +72,10 @@ final class BluetoothManager: NSObject, ObservableObject {
     /// Most recent color actually transmitted; used to skip redundant writes.
     private var lastTransmittedColor: IndexedColor?
 
+    /// Tracks whether we've auto-synced the clock for the current connection
+    /// so we only do it once per connection cycle.
+    private var didAutoSyncTime = false
+
     // MARK: Init
 
     override init() {
@@ -424,6 +428,7 @@ extension BluetoothManager: CBCentralManagerDelegate {
                         error: Error?) {
         targetPeripheral = nil
         writeCharacteristic = nil
+        didAutoSyncTime = false
         updateConnectionState(.disconnected)
         startScanning()
     }
@@ -434,6 +439,7 @@ extension BluetoothManager: CBCentralManagerDelegate {
         targetPeripheral = nil
         writeCharacteristic = nil
         lastTransmittedColor = nil
+        didAutoSyncTime = false
         updateConnectionState(.disconnected)
         // Auto-reconnect by restarting the scan.
         startScanning()
@@ -467,6 +473,11 @@ extension BluetoothManager: CBPeripheralDelegate {
         for characteristic in characteristics where characteristic.uuid == Self.writeCharacteristicUUID {
             writeCharacteristic = characteristic
             updateConnectionState(.connected)
+            // Auto-sync the strip's clock on connect so schedules are accurate.
+            if !didAutoSyncTime {
+                didAutoSyncTime = true
+                syncTime()
+            }
             return
         }
     }

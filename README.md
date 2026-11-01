@@ -9,7 +9,7 @@ Built with SwiftUI + CoreBluetooth, no external dependencies.
 - **Power on / off** with a glowing touch disk
 - **Live color control** with coalesced, throttled writes (write-without-response) for smooth streaming
 - **Brightness, pattern speed, and preset pattern** selection (29 built-in patterns)
-- **Clock sync** and **weekly scheduling** (per-day on/off times)
+- **Automatic clock sync** (on connect) and **weekly scheduling** (per-day on/off times)
 - Beautiful dark "liquid glass" UI with connection status indicator
 
 ## Requirements

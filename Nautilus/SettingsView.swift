@@ -133,22 +133,28 @@ struct SettingsView: View {
 
     private var clockSection: some View {
         sectionCard(title: "CLOCK") {
-            Button {
-                guard isConnected else { return }
-                bluetooth.syncTime()
-            } label: {
-                HStack {
-                    Label("Sync device time", systemImage: "clock.arrow.circlepath")
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
-                    Spacer()
+            VStack(alignment: .leading, spacing: 12) {
+                Label("Time syncs automatically on connect", systemImage: "checkmark.circle.fill")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.55))
+
+                Button {
+                    guard isConnected else { return }
+                    bluetooth.syncTime()
+                } label: {
+                    HStack {
+                        Label("Sync device time now", systemImage: "clock.arrow.circlepath")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        Spacer()
+                    }
+                    .foregroundStyle(.white)
+                    .padding(14)
+                    .frame(maxWidth: .infinity)
+                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color.white.opacity(0.08)))
                 }
-                .foregroundStyle(.white)
-                .padding(14)
-                .frame(maxWidth: .infinity)
-                .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.white.opacity(0.08)))
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
     }
 
