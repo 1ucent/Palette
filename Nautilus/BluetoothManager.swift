@@ -450,12 +450,36 @@ final class BluetoothManager: NSObject, ObservableObject {
     private func publishPowerState(_ on: Bool) {
         DispatchQueue.main.async { [weak self] in
             self?.isPowerOn = on
+            self?.syncSharedState()
         }
     }
 
     private func publishColor(r: UInt8, g: UInt8, b: UInt8) {
         DispatchQueue.main.async { [weak self] in
             self?.lastColor = IndexedColor(r: r, g: g, b: b)
+            self?.syncSharedState()
+        }
+    }
+
+    // MARK: Widget shared state
+
+    /// Writes current power/color/name to the shared App Group so the
+    /// home-screen widget can read it.
+    private func syncSharedState() {
+        let defaults = UserDefaults(suiteName: "group.com.nautilus.led")
+        defaults?.set(isPowerOn, forKey: "widget.powerOn")
+        let hex = String(format: "%02X%02X%02X", lastColor.r, lastColor.g, lastColor.b)
+        defaults?.set(hex, forKey: "widget.colorHex")
+        defaults?.set("Nautilus", forKey: "widget.deviceName")
+
+        // Handle any pending toggle requested by the widget.
+        if defaults?.object(forKey: "widget.pendingToggleTimestamp") != nil {
+            defaults?.removeObject(forKey: "widget.pendingToggleTimestamp")
+            let target = defaults?.bool(forKey: "widget.pendingPowerToggle")
+            defaults?.removeObject(forKey: "widget.pendingPowerToggle")
+            if let target {
+                if target { turnOn() } else { turnOff() }
+            }
         }
     }
 
