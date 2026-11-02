@@ -13,6 +13,7 @@ struct NautilusApp: App {
 
     @StateObject private var bluetooth: BluetoothManager = BluetoothManager()
     @StateObject private var store: LEDStore = LEDStore()
+    @StateObject private var settings: AppSettings = AppSettings()
 
     var body: some Scene {
         WindowGroup {
@@ -44,7 +45,8 @@ struct NautilusApp: App {
             }
             .environmentObject(bluetooth)
             .environmentObject(store)
-            .preferredColorScheme(.dark)
+            .environmentObject(settings)
+            .preferredColorScheme(settings.colorScheme)
             .onAppear {
                 configureAppearance()
             }

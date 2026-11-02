@@ -9,6 +9,47 @@
 
 import Foundation
 import Combine
+import SwiftUI
+
+// MARK: - App Settings (client-side appearance)
+
+final class AppSettings: ObservableObject {
+    /// Accent color used across the app (hex string, persisted).
+    @AppStorage("app.accentHex") var accentHex: String = "2673BF" {
+        didSet { objectWillChange.send() }
+    }
+    /// Wallpaper choice ("ocean", "midnight", "ember", "aurora").
+    @AppStorage("app.wallpaper") var wallpaper: String = "ocean" {
+        didSet { objectWillChange.send() }
+    }
+    /// "system", "light", "dark".
+    @AppStorage("app.appearance") var appearance: String = "dark" {
+        didSet { objectWillChange.send() }
+    }
+
+    var accentColor: Color {
+        Color(hex: accentHex) ?? Color(red: 0.15, green: 0.45, blue: 0.75)
+    }
+
+    var colorScheme: ColorScheme? {
+        switch appearance {
+        case "light": return .light
+        case "dark": return .dark
+        default: return nil
+        }
+    }
+}
+
+extension Color {
+    init?(hex: String) {
+        var h = hex.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "#", with: "")
+        guard h.count == 6, let v = UInt64(h, radix: 16) else { return nil }
+        let r = Double((v >> 16) & 0xFF) / 255.0
+        let g = Double((v >> 8) & 0xFF) / 255.0
+        let b = Double(v & 0xFF) / 255.0
+        self.init(red: r, green: g, blue: b)
+    }
+}
 
 final class LEDStore: ObservableObject {
 

@@ -250,6 +250,7 @@ private struct DiscoveredRow: View {
 
 private struct DeviceEditorSheet: View {
     @EnvironmentObject var store: LEDStore
+    @EnvironmentObject var bluetooth: BluetoothManager
     @Environment(\.dismiss) private var dismiss
     let device: LEDDevice
 
@@ -272,6 +273,13 @@ private struct DeviceEditorSheet: View {
                         ForEach(store.groups) { group in
                             Text(group.name).tag(group.id as UUID?)
                         }
+                    }
+                }
+                Section("Time") {
+                    Button {
+                        bluetooth.syncTime()
+                    } label: {
+                        Label("Sync device time", systemImage: "clock.arrow.circlepath")
                     }
                 }
             }

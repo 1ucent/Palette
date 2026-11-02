@@ -2,230 +2,104 @@
 //  SettingsView.swift
 //  Nautilus
 //
-//  Settings tab for the ELK-BLEDOM LED strip controller: brightness, pattern
-//  speed, preset pattern selection, clock sync, and weekly scheduling.
+//  Client-side settings: accent color, wallpaper, and light/dark appearance.
+//  These alter the app's own look, not the LED strip.
 //
 
 import SwiftUI
 
-// MARK: - SettingsView
-
 struct SettingsView: View {
 
-    @EnvironmentObject private var bluetooth: BluetoothManager
-
-    @State private var brightness: Double = 0.85
-    @State private var speed: Double = 0.5
-    @State private var selectedPattern: Int = 0
-    @State private var timingHour: Int = 18
-    @State private var timingMinute: Int = 0
-    @State private var timingIsOn: Bool = true
-    @State private var timingIsSet: Bool = true
-    @State private var weekdays: [Bool] = Array(repeating: false, count: 7)
-
-    private static let daySymbols = ["S", "M", "T", "W", "T", "F", "S"]
+    @EnvironmentObject private var settings: AppSettings
 
     var body: some View {
         ZStack {
-            background
+            wallpaperBackground
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     header
-                    brightnessSection
-                    speedSection
-                    patternSection
-                    clockSection
-                    scheduleSection
+                    accentSection
+                    wallpaperSection
+                    appearanceSection
                     Spacer(minLength: 20)
                 }
                 .padding(22)
             }
         }
-        .preferredColorScheme(.dark)
     }
 
-    // MARK: Background
+    // MARK: Background (uses selected wallpaper)
 
-    private var background: some View {
-        LinearGradient(
-            colors: [
-                Color(red: 0.02, green: 0.05, blue: 0.09),
-                Color(red: 0.01, green: 0.03, blue: 0.06)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-        .ignoresSafeArea()
+    private var wallpaperBackground: some View {
+        WallpaperGradient(kind: settings.wallpaper)
+            .ignoresSafeArea()
     }
-
-    // MARK: Sections
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Settings")
                 .font(.system(size: 30, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
-            Text("Configure your LED strip")
+            Text("Customize your app")
                 .font(.system(size: 14, weight: .medium, design: .rounded))
                 .foregroundStyle(.white.opacity(0.55))
         }
         .padding(.top, 8)
     }
 
-    private var isConnected: Bool {
-        bluetooth.connectionState == .connected
-    }
+    // MARK: Accent color
 
-    private var brightnessSection: some View {
-        sectionCard(title: "BRIGHTNESS") {
-            VStack(spacing: 14) {
-                Text("\(Int((brightness * 100).rounded()))%")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.75))
-                    .monospacedDigit()
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                Slider(value: $brightness, in: 0...1)
-                    .tint(.white.opacity(0.85))
-                    .onChange(of: brightness) { _, newValue in
-                        guard isConnected else { return }
-                        bluetooth.setBrightness(Int((newValue * 100).rounded()))
-                    }
-            }
-        }
-        .opacity(isConnected ? 1.0 : 0.45)
-    }
-
-    private var speedSection: some View {
-        sectionCard(title: "PATTERN SPEED") {
-            VStack(spacing: 14) {
-                Text("\(Int((speed * 100).rounded()))%")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.75))
-                    .monospacedDigit()
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                Slider(value: $speed, in: 0...1)
-                    .tint(.white.opacity(0.85))
-                    .onChange(of: speed) { _, newValue in
-                        guard isConnected else { return }
-                        bluetooth.setSpeed(Int((newValue * 100).rounded()))
-                    }
-            }
-        }
-        .opacity(isConnected ? 1.0 : 0.45)
-    }
-
-    private var patternSection: some View {
-        sectionCard(title: "PATTERN") {
-            Picker("Pattern", selection: $selectedPattern) {
-                ForEach(0..<29, id: \.self) { index in
-                    Text("\(index + 1)").tag(index)
+    private var accentSection: some View {
+        card(title: "ACCENT COLOR") {
+            ColorPicker("Accent", selection: Binding(
+                get: { settings.accentColor },
+                set: { color in
+                    let ui = UIColor(color)
+                    var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+                    ui.getRed(&r, green: &g, blue: &b, alpha: &a)
+                    let hex = String(format: "%02X%02X%02X",
+                                     Int(r * 255), Int(g * 255), Int(b * 255))
+                    settings.accentHex = hex
                 }
-            }
-            .pickerStyle(.wheel)
-            .frame(height: 120)
-            .onChange(of: selectedPattern) { _, newValue in
-                guard isConnected else { return }
-                bluetooth.setPattern(newValue)
-            }
-        }
-        .opacity(isConnected ? 1.0 : 0.45)
-    }
-
-    private var clockSection: some View {
-        sectionCard(title: "CLOCK") {
-            VStack(alignment: .leading, spacing: 12) {
-                Label("Time syncs automatically on connect", systemImage: "checkmark.circle.fill")
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.55))
-
-                Button {
-                    guard isConnected else { return }
-                    bluetooth.syncTime()
-                } label: {
-                    HStack {
-                        Label("Sync device time now", systemImage: "clock.arrow.circlepath")
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        Spacer()
-                    }
-                    .foregroundStyle(.white)
-                    .padding(14)
-                    .frame(maxWidth: .infinity)
-                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color.white.opacity(0.08)))
-                }
-                .buttonStyle(.plain)
-            }
+            ), supportsOpacity: false)
         }
     }
 
-    private var scheduleSection: some View {
-        sectionCard(title: "WEEKLY SCHEDULE") {
-            VStack(spacing: 16) {
-                HStack(spacing: 8) {
-                    ForEach(0..<7, id: \.self) { index in
-                        Button {
-                            weekdays[index].toggle()
-                        } label: {
-                            Text(Self.daySymbols[index])
-                                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 36)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                        .fill(weekdays[index] ? Color.white.opacity(0.22) : Color.white.opacity(0.06))
-                                )
-                                .foregroundStyle(.white)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
+    // MARK: Wallpaper
 
-                DatePicker(
-                    "Time",
-                    selection: Binding(
-                        get: {
-                            var comps = DateComponents()
-                            comps.hour = timingHour
-                            comps.minute = timingMinute
-                            return Calendar.current.date(from: comps) ?? Date()
-                        },
-                        set: { date in
-                            let comps = Calendar.current.dateComponents([.hour, .minute], from: date)
-                            timingHour = comps.hour ?? 0
-                            timingMinute = comps.minute ?? 0
-                        }
-                    ),
-                    displayedComponents: .hourAndMinute
-                )
-                .datePickerStyle(.compact)
-                .tint(.white)
-
-                Toggle("Turn lights on", isOn: $timingIsOn)
-                    .tint(.white.opacity(0.85))
-                Toggle("Enable this schedule", isOn: $timingIsSet)
-                    .tint(.white.opacity(0.85))
-
-                Button {
-                    applySchedule()
-                } label: {
-                    Text("Apply Schedule")
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color(red: 0.15, green: 0.45, blue: 0.75))
+    private var wallpaperSection: some View {
+        card(title: "WALLPAPER") {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 12) {
+                ForEach(WallpaperKind.allCases, id: \.self) { kind in
+                    WallpaperGradient(kind: kind.rawValue)
+                        .frame(height: 90)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(settings.wallpaper == kind.rawValue ? settings.accentColor : .white.opacity(0.2), lineWidth: 3)
                         )
+                        .onTapGesture { settings.wallpaper = kind.rawValue }
                 }
-                .buttonStyle(.plain)
             }
         }
     }
 
-    // MARK: Helpers
+    // MARK: Appearance
 
-    private func sectionCard(title: String, @ViewBuilder content: () -> some View) -> some View {
+    private var appearanceSection: some View {
+        card(title: "APPEARANCE") {
+            Picker("Appearance", selection: $settings.appearance) {
+                Text("System").tag("system")
+                Text("Light").tag("light")
+                Text("Dark").tag("dark")
+            }
+            .pickerStyle(.segmented)
+        }
+    }
+
+    // MARK: Card
+
+    private func card(title: String, @ViewBuilder content: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
                 .font(.system(size: 12, weight: .bold, design: .rounded))
@@ -234,50 +108,51 @@ struct SettingsView: View {
             content()
         }
         .padding(22)
-        .background(glassCard(cornerRadius: 26))
-        .overlay(specularHighlights(cornerRadius: 26))
+        .background(RoundedRectangle(cornerRadius: 26).fill(.ultraThinMaterial))
+        .overlay(RoundedRectangle(cornerRadius: 26).stroke(Color.white.opacity(0.12), lineWidth: 1))
+        .shadow(color: .black.opacity(0.4), radius: 20, x: 0, y: 12)
+    }
+}
+
+// MARK: - Wallpaper kinds
+
+enum WallpaperKind: String, CaseIterable {
+    case ocean = "ocean"
+    case midnight = "midnight"
+    case ember = "ember"
+    case aurora = "aurora"
+}
+
+struct WallpaperGradient: View {
+    let kind: String
+
+    private var colors: [Color] {
+        switch kind {
+        case "ocean":
+            return [Color(red: 0.02, green: 0.05, blue: 0.09),
+                    Color(red: 0.03, green: 0.08, blue: 0.13),
+                    Color(red: 0.01, green: 0.03, blue: 0.06)]
+        case "midnight":
+            return [Color(red: 0.03, green: 0.02, blue: 0.08),
+                    Color(red: 0.06, green: 0.04, blue: 0.15),
+                    Color(red: 0.01, green: 0.01, blue: 0.04)]
+        case "ember":
+            return [Color(red: 0.12, green: 0.05, blue: 0.02),
+                    Color(red: 0.22, green: 0.09, blue: 0.03),
+                    Color(red: 0.06, green: 0.02, blue: 0.01)]
+        case "aurora":
+            return [Color(red: 0.02, green: 0.08, blue: 0.06),
+                    Color(red: 0.05, green: 0.04, blue: 0.12),
+                    Color(red: 0.02, green: 0.02, blue: 0.05)]
+        default:
+            return [Color(red: 0.02, green: 0.05, blue: 0.09),
+                    Color(red: 0.03, green: 0.08, blue: 0.13),
+                    Color(red: 0.01, green: 0.03, blue: 0.06)]
+        }
     }
 
-    private func applySchedule() {
-        guard isConnected else { return }
-        bluetooth.setTiming(
-            hour: timingHour,
-            minute: timingMinute,
-            second: 0,
-            weekdays: weekdays,
-            isOn: timingIsOn,
-            isSet: timingIsSet
-        )
-    }
-
-    private func glassCard(cornerRadius: CGFloat) -> some View {
-        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .fill(.ultraThinMaterial)
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [Color.white.opacity(0.10), Color.white.opacity(0.02)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .shadow(color: .black.opacity(0.45), radius: 20, x: 0, y: 12)
-    }
-
-    private func specularHighlights(cornerRadius: CGFloat) -> some View {
-        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .stroke(
-                LinearGradient(
-                    colors: [Color.white.opacity(0.35), Color.white.opacity(0.05), Color.white.opacity(0.18)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                lineWidth: 1
-            )
-            .blendMode(.screen)
+    var body: some View {
+        LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
     }
 }
 
@@ -285,5 +160,5 @@ struct SettingsView: View {
 
 #Preview {
     SettingsView()
-        .environmentObject(BluetoothManager())
+        .environmentObject(AppSettings())
 }

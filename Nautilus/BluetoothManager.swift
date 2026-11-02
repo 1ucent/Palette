@@ -64,7 +64,9 @@ final class BluetoothManager: NSObject, ObservableObject {
 
     private static let serviceUUID = CBUUID(string: "FFF0")
     private static let writeCharacteristicUUID = CBUUID(string: "FFF3")
-    private static let targetDeviceName = "ELK-BLEDOM"
+    /// Accepted advertised names. Both the "M" and the common "OB" mislabel are
+    /// matched, since many ELK-BLEDOM strips advertise as `ELK-BLEDOB`.
+    private static let targetDeviceNames: Set<String> = ["ELK-BLEDOM", "ELK-BLEDOB"]
 
     // MARK: CoreBluetooth
 
@@ -120,12 +122,8 @@ final class BluetoothManager: NSObject, ObservableObject {
             self.clearDiscoveredDevices()
             self.updateConnectionState(.scanning)
 
-            // Scan for the service UUID and also run a name-agnostic pass so we
-            // can catch devices that do not advertise the service UUID reliably.
-            self.centralManager.scanForPeripherals(
-                withServices: [Self.serviceUUID],
-                options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
-            )
+            // Full scan with no service filter — we match by the advertised name
+            // ("ELK-BLEDOM" / "ELK-BLEDOB") rather than by service UUID.
             self.centralManager.scanForPeripherals(
                 withServices: nil,
                 options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
@@ -498,12 +496,12 @@ final class BluetoothManager: NSObject, ObservableObject {
     // MARK: Discovery Helpers
 
     private func consider(peripheral: CBPeripheral, advertisedName: String?, advertisedServices: [CBUUID]?) {
-        let nameMatches = (advertisedName == Self.targetDeviceName)
-            || (peripheral.name == Self.targetDeviceName)
-        let serviceMatches = advertisedServices?.contains(Self.serviceUUID) == true
+        // Match purely on the advertised/device name ("ELK-BLEDOM" or "ELK-BLEDOB"),
+        // NOT on the BLE identifier or service UUID.
+        let candidateNames = [advertisedName, peripheral.name].compactMap { $0 }
+        let nameMatches = candidateNames.contains { Self.targetDeviceNames.contains($0) }
 
-        // Only surface devices that match our known strip (name or service).
-        guard nameMatches || serviceMatches else { return }
+        guard nameMatches else { return }
 
         let name = advertisedName ?? peripheral.name ?? "LED Strip"
         addDiscovered(peripheral: peripheral, name: name)
