@@ -2,10 +2,9 @@
 //  ContentView.swift
 //  Nautilus
 //
-//  Liquid Glass dashboard. A centered power button whose border glows with the
-//  current color; tap toggles power, long-press opens the color picker. A ring
-//  of "knobs" around it is the brightness control — rotating left raises it,
-//  right lowers it, with haptic ticks.
+//  Liquid Glass dashboard. A centered power button with an integrated
+//  "ambiance" (brightness) ring. Tap toggles power; dragging around the ring
+//  changes brightness; long-press opens the color picker modal.
 //
 
 import SwiftUI
@@ -63,7 +62,7 @@ struct ContentView: View {
     @State private var diskPressed: Bool = false
     @State private var pulsePhase: CGFloat = 0
     @State private var showColorPicker: Bool = false
-    @State private var knobRotation: Double = 0
+    @State private var ringRotation: Double = 0
 
     private let hapticLight = UIImpactFeedbackGenerator(style: .light)
     private let hapticTick = UISelectionFeedbackGenerator()
@@ -118,14 +117,13 @@ struct ContentView: View {
     // MARK: Content Layer
 
     private var contentLayer: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 22) {
             statusIndicator
                 .padding(.top, 8)
 
             Spacer(minLength: 0)
 
             powerControl
-                .padding(.vertical, 6)
 
             Spacer(minLength: 0)
 
@@ -134,6 +132,10 @@ struct ContentView: View {
         }
         .padding(.horizontal, 22)
         .padding(.vertical, 10)
+    }
+
+    private var currentColor: Color {
+        RGBColor(color: selectedColor).swiftUIColor
     }
 
     // MARK: Status Indicator
@@ -157,21 +159,79 @@ struct ContentView: View {
         .overlay(specularHighlights(cornerRadius: 22))
     }
 
-    // MARK: Power Control (power button + brightness knob ring)
+    // MARK: Power Control (button + ambiance ring)
 
     private var powerControl: some View {
         ZStack {
-            // Outer brightness knob ring
-            brightnessKnobRing
-
-            // Power button
+            ambianceRing
             powerButton
         }
-        .frame(width: 340, height: 340)
+        .frame(width: 320, height: 320)
     }
 
-    private var currentColor: Color {
-        RGBColor(color: selectedColor).swiftUIColor
+    // MARK: Ambiance Ring (brightness)
+
+    private var ambianceRing: some View {
+        let markerCount = 48
+        return ZStack {
+            Circle()
+                .stroke(Color.white.opacity(0.08), lineWidth: 5)
+                .frame(width: 280, height: 280)
+
+            Circle()
+                .trim(from: 0, to: brightness)
+                .stroke(
+                    AngularGradient(
+                        colors: [currentColor.opacity(0.55), currentColor.opacity(0.95)],
+                        center: .center
+                    ),
+                    style: StrokeStyle(lineWidth: 5, lineCap: .round)
+                )
+                .frame(width: 280, height: 280)
+                .rotationEffect(.degrees(-90))
+                .animation(.easeInOut(duration: 0.15), value: brightness)
+
+            ForEach(0..<markerCount, id: \.self) { i in
+                let angle = Double(i) / Double(markerCount) * 360.0
+                RoundedRectangle(cornerRadius: 1)
+                    .fill(i < Int(Double(markerCount) * brightness) ? currentColor : .white.opacity(0.2))
+                    .frame(width: 2, height: 7)
+                    .offset(y: -138)
+                    .rotationEffect(.degrees(angle))
+            }
+        }
+        .frame(width: 280, height: 280)
+        .rotationEffect(.degrees(ringRotation))
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { value in
+                    handleRingDrag(value)
+                }
+        )
+    }
+
+    private func handleRingDrag(_ value: DragGesture.Value) {
+        let center = CGPoint(x: 140, y: 140)
+        let delta = CGVector(dx: value.location.x - center.x,
+                             dy: value.location.y - center.y)
+        let angle = atan2(delta.dy, delta.dx) * 180 / .pi
+        var dRotation = angle - ringRotation
+        if dRotation > 180 { dRotation -= 360 }
+        if dRotation < -180 { dRotation += 360 }
+
+        let ticks = Int(dRotation / 3.0)
+        if ticks != 0 {
+            let newBrightness = brightness - Double(ticks) * 0.01
+            let clamped = Swift.min(1.0, Swift.max(0.0, newBrightness))
+            if clamped != brightness {
+                brightness = clamped
+                hapticTick.selectionChanged()
+                if bluetooth.isPowerOn {
+                    streamBrightness()
+                }
+            }
+        }
+        ringRotation = angle
     }
 
     // MARK: Power Button
@@ -179,7 +239,6 @@ struct ContentView: View {
     private var powerButton: some View {
         Button(action: togglePower) {
             ZStack {
-                // Liquid glass base
                 Circle()
                     .fill(
                         RadialGradient(
@@ -189,73 +248,42 @@ struct ContentView: View {
                             ],
                             center: .init(x: 0.35, y: 0.3),
                             startRadius: 8,
-                            endRadius: 200
+                            endRadius: 150
                         )
                     )
-                    .frame(width: 220, height: 220)
+                    .frame(width: 200, height: 200)
 
-                // Color glow when powered
                 Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                currentColor.opacity(bluetooth.isPowerOn ? 0.85 : 0.15),
-                                currentColor.opacity(bluetooth.isPowerOn ? 0.3 : 0.03)
-                            ],
-                            center: .init(x: 0.42, y: 0.38),
-                            startRadius: 6,
-                            endRadius: 160
-                        )
-                    )
-                    .frame(width: 182, height: 182)
+                    .fill(currentColor.opacity(bluetooth.isPowerOn ? 0.8 : 0.12))
+                    .frame(width: 168, height: 168)
                     .blur(radius: 2)
-                    .opacity(bluetooth.isPowerOn ? 1.0 : 0.7)
 
-                // Specular sheen
                 Ellipse()
                     .fill(
-                        LinearGradient(
-                            colors: [.white.opacity(0.45), .clear],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
+                        LinearGradient(colors: [.white.opacity(0.4), .clear],
+                                       startPoint: .top, endPoint: .bottom)
                     )
-                    .frame(width: 130, height: 60)
+                    .frame(width: 120, height: 55)
                     .blur(radius: 6)
-                    .offset(y: -60)
-                    .opacity(bluetooth.isPowerOn ? 0.55 : 0.3)
+                    .offset(y: -55)
+                    .opacity(bluetooth.isPowerOn ? 0.5 : 0.25)
 
                 Image(systemName: "power")
-                    .font(.system(size: 52, weight: .light))
-                    .foregroundStyle(bluetooth.isPowerOn ? .white : .white.opacity(0.55))
-                    .shadow(color: bluetooth.isPowerOn ? currentColor.opacity(0.9) : .clear, radius: 18)
+                    .font(.system(size: 48, weight: .light))
+                    .foregroundStyle(bluetooth.isPowerOn ? .white : .white.opacity(0.5))
+                    .shadow(color: bluetooth.isPowerOn ? currentColor.opacity(0.9) : .clear, radius: 16)
             }
-            .frame(width: 240, height: 240)
+            .frame(width: 200, height: 200)
             .overlay(
-                // Current-color border
-                Circle()
-                    .stroke(
-                        AngularGradient(
-                            colors: [currentColor.opacity(0.9), currentColor.opacity(0.2), currentColor.opacity(0.9)],
-                            center: .center
-                        ),
-                        lineWidth: 3
-                    )
-                    .blur(radius: 0.8)
+                Circle().stroke(currentColor.opacity(bluetooth.isPowerOn ? 0.95 : 0.3), lineWidth: 2.5)
             )
-            .overlay(
-                Circle()
-                    .stroke(.white.opacity(0.15), lineWidth: 0.8)
-            )
-            .scaleEffect(diskPressed ? 0.96 : 1.0)
+            .scaleEffect(diskPressed ? 0.95 : 1.0)
             .animation(.spring(response: 0.35, dampingFraction: 0.6), value: diskPressed)
-            .animation(.easeInOut(duration: 0.5), value: bluetooth.isPowerOn)
-            .animation(.easeInOut(duration: 0.3), value: selectedColor)
-            .shadow(color: .black.opacity(0.6), radius: 26, x: 0, y: 16)
-            .shadow(color: bluetooth.isPowerOn ? currentColor.opacity(0.5) : .clear, radius: 20)
+            .animation(.easeInOut(duration: 0.4), value: bluetooth.isPowerOn)
+            .shadow(color: .black.opacity(0.5), radius: 22, x: 0, y: 14)
+            .shadow(color: bluetooth.isPowerOn ? currentColor.opacity(0.4) : .clear, radius: 20)
         }
         .buttonStyle(PressableButtonStyle(pressed: $diskPressed))
-        // Long press opens the iOS color picker.
         .simultaneousGesture(
             LongPressGesture(minimumDuration: 0.5)
                 .onEnded { _ in
@@ -274,73 +302,6 @@ struct ContentView: View {
             }
             .preferredColorScheme(.dark)
         }
-    }
-
-    // MARK: Brightness Knob Ring
-
-    private var brightnessKnobRing: some View {
-        let markerCount = 48
-        return ZStack {
-            Circle()
-                .stroke(Color.white.opacity(0.08), lineWidth: 6)
-                .frame(width: 300, height: 300)
-
-            Circle()
-                .trim(from: 0, to: brightness)
-                .stroke(
-                    AngularGradient(
-                        colors: [currentColor.opacity(0.6), currentColor.opacity(0.9)],
-                        center: .center
-                    ),
-                    style: StrokeStyle(lineWidth: 6, lineCap: .round)
-                )
-                .frame(width: 300, height: 300)
-                .rotationEffect(.degrees(-90))
-                .animation(.easeInOut(duration: 0.15), value: brightness)
-
-            ForEach(0..<markerCount, id: \.self) { i in
-                let angle = Double(i) / Double(markerCount) * 360.0
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(i < Int(Double(markerCount) * brightness) ? currentColor : .white.opacity(0.2))
-                    .frame(width: 2, height: 8)
-                    .offset(y: -146)
-                    .rotationEffect(.degrees(angle))
-            }
-        }
-        .frame(width: 300, height: 300)
-        .rotationEffect(.degrees(knobRotation))
-        .gesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { value in
-                    handleKnobDrag(value)
-                }
-        )
-    }
-
-    private func handleKnobDrag(_ value: DragGesture.Value) {
-        let center = CGPoint(x: 150, y: 150)
-        let delta = CGVector(dx: value.location.x - center.x,
-                             dy: value.location.y - center.y)
-        let angle = atan2(delta.dy, delta.dx) * 180 / .pi
-        var dRotation = angle - knobRotation
-        if dRotation > 180 { dRotation -= 360 }
-        if dRotation < -180 { dRotation += 360 }
-
-        let step = 3.0
-        let ticks = Int(dRotation / step)
-        if ticks != 0 {
-            // Right (clockwise, positive) lowers brightness; left raises it.
-            let newBrightness = brightness - Double(ticks) * 0.01
-            let clamped = Swift.min(1.0, Swift.max(0.0, newBrightness))
-            if clamped != brightness {
-                brightness = clamped
-                hapticTick.selectionChanged()
-                if bluetooth.isPowerOn {
-                    streamBrightness()
-                }
-            }
-        }
-        knobRotation = angle
     }
 
     // MARK: Connection Footer

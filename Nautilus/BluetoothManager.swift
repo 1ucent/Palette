@@ -122,8 +122,10 @@ final class BluetoothManager: NSObject, ObservableObject {
             self.clearDiscoveredDevices()
             self.updateConnectionState(.scanning)
 
-            // Full scan with no service filter — we match by the advertised name
-            // ("ELK-BLEDOM" / "ELK-BLEDOB") rather than by service UUID.
+            // Single full scan (nil services) — we accept a device in `consider`
+            // by matching its advertised name (ELK-BLEDOM/ELK-BLEDOB) OR the FFF0
+            // service UUID. CoreBluetooth only supports one scan at a time, so a
+            // filtered scan would miss name-only advertisers.
             self.centralManager.scanForPeripherals(
                 withServices: nil,
                 options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
@@ -496,12 +498,19 @@ final class BluetoothManager: NSObject, ObservableObject {
     // MARK: Discovery Helpers
 
     private func consider(peripheral: CBPeripheral, advertisedName: String?, advertisedServices: [CBUUID]?) {
-        // Match purely on the advertised/device name ("ELK-BLEDOM" or "ELK-BLEDOB"),
-        // NOT on the BLE identifier or service UUID.
+        // Accept a device if ANY of its names contains "ELK-BLEDOM"/"ELK-BLEDOB"
+        // (case/whitespace-insensitive) OR it advertises our service UUID (FFF0).
         let candidateNames = [advertisedName, peripheral.name].compactMap { $0 }
-        let nameMatches = candidateNames.contains { Self.targetDeviceNames.contains($0) }
+        let normalized = candidateNames.map {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        }
+        let nameMatches = normalized.contains { name in
+            Self.targetDeviceNames.contains { name.contains($0) }
+        }
 
-        guard nameMatches else { return }
+        let serviceMatches = advertisedServices?.contains(Self.serviceUUID) == true
+
+        guard nameMatches || serviceMatches else { return }
 
         let name = advertisedName ?? peripheral.name ?? "LED Strip"
         addDiscovered(peripheral: peripheral, name: name)

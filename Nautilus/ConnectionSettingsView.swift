@@ -39,6 +39,15 @@ struct ConnectionSettingsView: View {
         .sheet(item: $renameGroup) { group in
             GroupRenameSheet(group: group)
         }
+        .onAppear {
+            // Auto-scan as soon as the Lights tab opens.
+            bluetooth.startScanning()
+            isScanning = true
+        }
+        .onDisappear {
+            bluetooth.stopScanning()
+            isScanning = false
+        }
     }
 
     private var background: some View {
