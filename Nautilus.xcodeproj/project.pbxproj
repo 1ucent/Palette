@@ -131,12 +131,10 @@
 				A10000000000000000000060 /* Sources */,
 				A10000000000000000000020 /* Frameworks */,
 				A10000000000000000000061 /* Resources */,
-				B10000000000000000000080 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				B100000000000000000000A0 /* PBXTargetDependency */,
 			);
 			name = Nautilus;
 			productName = Nautilus;
