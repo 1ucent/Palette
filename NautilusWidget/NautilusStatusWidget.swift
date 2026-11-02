@@ -8,6 +8,7 @@
 
 import WidgetKit
 import SwiftUI
+import AppIntents
 
 // MARK: - Shared App Group key
 
