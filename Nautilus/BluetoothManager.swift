@@ -498,19 +498,17 @@ final class BluetoothManager: NSObject, ObservableObject {
     // MARK: Discovery Helpers
 
     private func consider(peripheral: CBPeripheral, advertisedName: String?, advertisedServices: [CBUUID]?) {
-        // Accept a device if ANY of its names contains "ELK-BLEDOM"/"ELK-BLEDOB"
-        // (case/whitespace-insensitive) OR it advertises our service UUID (FFF0).
+        // Match ONLY on the name ("ELK-BLEDOM" or "ELK-BLEDOB"),
+        // case/whitespace-insensitive. Ignore service UUIDs entirely.
         let candidateNames = [advertisedName, peripheral.name].compactMap { $0 }
         let normalized = candidateNames.map {
             $0.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         }
         let nameMatches = normalized.contains { name in
-            Self.targetDeviceNames.contains { name.contains($0) }
+            Self.targetDeviceNames.contains(name)
         }
 
-        let serviceMatches = advertisedServices?.contains(Self.serviceUUID) == true
-
-        guard nameMatches || serviceMatches else { return }
+        guard nameMatches else { return }
 
         let name = advertisedName ?? peripheral.name ?? "LED Strip"
         addDiscovered(peripheral: peripheral, name: name)
