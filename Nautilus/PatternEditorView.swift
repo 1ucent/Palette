@@ -40,8 +40,15 @@ struct PatternEditorView: View {
                 }
 
                 Section("Steps") {
-                    ForEach($steps) { $step in
-                        StepRow(step: $step, onDelete: { removeStep(step) })
+                    ForEach(Array(steps.enumerated()), id: \.element.id) { index, step in
+                        VStack(spacing: 4) {
+                            StepRow(step: stepBinding(for: step.id),
+                                    onDelete: { removeStep(step) },
+                                    canMoveUp: index > 0,
+                                    canMoveDown: index < steps.count - 1,
+                                    onMoveUp: { moveStep(from: index, to: index - 1) },
+                                    onMoveDown: { moveStep(from: index, to: index + 1) })
+                        }
                     }
                     Button {
                         steps.append(PatternStep(red: 1, green: 1, blue: 1, duration: 1))
@@ -87,6 +94,22 @@ struct PatternEditorView: View {
         steps.removeAll { $0.id == step.id }
     }
 
+    private func moveStep(from: Int, to: Int) {
+        guard steps.indices.contains(from), steps.indices.contains(to) else { return }
+        steps.move(fromOffsets: IndexSet(integer: from), toOffset: to > from ? to + 1 : to)
+    }
+
+    private func stepBinding(for id: UUID) -> Binding<PatternStep> {
+        Binding(
+            get: { self.steps.first(where: { $0.id == id }) ?? PatternStep(red: 1, green: 1, blue: 1) },
+            set: { newValue in
+                if let idx = self.steps.firstIndex(where: { $0.id == id }) {
+                    self.steps[idx] = newValue
+                }
+            }
+        )
+    }
+
     private func save() {
         var updated = pattern
         updated.name = name
@@ -107,19 +130,40 @@ struct PatternEditorView: View {
 private struct StepRow: View {
     @Binding var step: PatternStep
     let onDelete: () -> Void
+    let canMoveUp: Bool
+    let canMoveDown: Bool
+    let onMoveUp: () -> Void
+    let onMoveDown: () -> Void
 
     var body: some View {
         VStack(spacing: 10) {
-            ColorPicker("Color", selection: Binding(
-                get: { Color(red: step.red, green: step.green, blue: step.blue) },
-                set: { newColor in
-                    if let rgb = RGBColorOption(color: newColor) {
-                        step.red = rgb.red
-                        step.green = rgb.green
-                        step.blue = rgb.blue
+            HStack {
+                ColorPicker("Color", selection: Binding(
+                    get: { Color(red: step.red, green: step.green, blue: step.blue) },
+                    set: { newColor in
+                        if let rgb = RGBColorOption(color: newColor) {
+                            step.red = rgb.red
+                            step.green = rgb.green
+                            step.blue = rgb.blue
+                        }
                     }
+                ))
+                Spacer()
+                HStack(spacing: 14) {
+                    Button(action: onMoveUp) {
+                        Image(systemName: "chevron.up")
+                    }
+                    .disabled(!canMoveUp)
+                    .opacity(canMoveUp ? 1.0 : 0.3)
+
+                    Button(action: onMoveDown) {
+                        Image(systemName: "chevron.down")
+                    }
+                    .disabled(!canMoveDown)
+                    .opacity(canMoveDown ? 1.0 : 0.3)
                 }
-            ))
+                .buttonStyle(.plain)
+            }
 
             HStack {
                 Text("Duration")

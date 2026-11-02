@@ -12,6 +12,7 @@ struct RoutinesView: View {
 
     @EnvironmentObject private var store: LEDStore
     @EnvironmentObject private var bluetooth: BluetoothManager
+    @EnvironmentObject private var settings: AppSettings
     @StateObject private var scheduler = RoutineScheduler()
 
     @State private var editingRoutine: Routine?
@@ -46,10 +47,7 @@ struct RoutinesView: View {
     }
 
     private var background: some View {
-        LinearGradient(
-            colors: [Color(red: 0.02, green: 0.05, blue: 0.09),
-                     Color(red: 0.01, green: 0.03, blue: 0.06)],
-            startPoint: .topLeading, endPoint: .bottomTrailing)
+        WallpaperGradient(kind: settings.wallpaper)
             .ignoresSafeArea()
     }
 

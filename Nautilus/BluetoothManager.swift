@@ -64,9 +64,9 @@ final class BluetoothManager: NSObject, ObservableObject {
 
     private static let serviceUUID = CBUUID(string: "FFF0")
     private static let writeCharacteristicUUID = CBUUID(string: "FFF3")
-    /// Accepted advertised names. Both the "M" and the common "OB" mislabel are
-    /// matched, since many ELK-BLEDOM strips advertise as `ELK-BLEDOB`.
-    private static let targetDeviceNames: Set<String> = ["ELK-BLEDOM", "ELK-BLEDOB"]
+    /// Devices whose advertised name contains "ELK" are accepted (covers
+    /// ELK-BLEDOM, ELK-BLEDOB, and any other ELK-* strip names).
+    private static let targetDevicePrefix = "ELK"
 
     // MARK: CoreBluetooth
 
@@ -498,14 +498,14 @@ final class BluetoothManager: NSObject, ObservableObject {
     // MARK: Discovery Helpers
 
     private func consider(peripheral: CBPeripheral, advertisedName: String?, advertisedServices: [CBUUID]?) {
-        // Match ONLY on the name ("ELK-BLEDOM" or "ELK-BLEDOB"),
-        // case/whitespace-insensitive. Ignore service UUIDs entirely.
+        // Match ONLY on names containing "ELK" (case/whitespace-insensitive).
+        // Ignore service UUIDs entirely.
         let candidateNames = [advertisedName, peripheral.name].compactMap { $0 }
         let normalized = candidateNames.map {
             $0.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         }
         let nameMatches = normalized.contains { name in
-            Self.targetDeviceNames.contains(name)
+            name.contains(Self.targetDevicePrefix)
         }
 
         guard nameMatches else { return }

@@ -11,6 +11,7 @@ struct CustomPatternsView: View {
 
     @EnvironmentObject private var store: LEDStore
     @EnvironmentObject private var bluetooth: BluetoothManager
+    @EnvironmentObject private var settings: AppSettings
 
     @State private var editingPattern: CustomPattern?
     @State private var isNewPattern = false
@@ -22,6 +23,7 @@ struct CustomPatternsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     header
+                    disclaimer
                     newButton
 
                     if store.patterns.isEmpty {
@@ -41,10 +43,7 @@ struct CustomPatternsView: View {
     }
 
     private var background: some View {
-        LinearGradient(
-            colors: [Color(red: 0.02, green: 0.05, blue: 0.09),
-                     Color(red: 0.01, green: 0.03, blue: 0.06)],
-            startPoint: .topLeading, endPoint: .bottomTrailing)
+        WallpaperGradient(kind: settings.wallpaper)
             .ignoresSafeArea()
     }
 
@@ -75,6 +74,19 @@ struct CustomPatternsView: View {
                 .background(RoundedRectangle(cornerRadius: 14).fill(Color(red: 0.15, green: 0.45, blue: 0.75)))
         }
         .buttonStyle(.plain)
+    }
+
+    private var disclaimer: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "info.circle.fill")
+                .font(.system(size: 12))
+            Text("Patterns play only while the app is open")
+                .font(.system(size: 12, weight: .medium, design: .rounded))
+        }
+        .foregroundStyle(.white.opacity(0.5))
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(RoundedRectangle(cornerRadius: 12).fill(.ultraThinMaterial))
     }
 
     private var emptyState: some View {

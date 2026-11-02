@@ -56,13 +56,13 @@ private extension Double {
 struct ContentView: View {
 
     @EnvironmentObject private var bluetooth: BluetoothManager
+    @EnvironmentObject private var settings: AppSettings
 
     @State private var selectedColor: Color = Color(red: 0.15, green: 0.45, blue: 0.75)
     @State private var brightness: Double = 0.85
     @State private var diskPressed: Bool = false
     @State private var pulsePhase: CGFloat = 0
     @State private var showColorPicker: Bool = false
-    @State private var ringRotation: Double = 0
 
     private let hapticLight = UIImpactFeedbackGenerator(style: .light)
     private let hapticTick = UISelectionFeedbackGenerator()
@@ -72,7 +72,7 @@ struct ContentView: View {
             background
             contentLayer
         }
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(settings.colorScheme)
         .onAppear {
             hapticLight.prepare()
             hapticTick.prepare()
@@ -86,16 +86,8 @@ struct ContentView: View {
 
     private var background: some View {
         ZStack {
-            LinearGradient(
-                colors: [
-                    Color(red: 0.02, green: 0.05, blue: 0.09),
-                    Color(red: 0.03, green: 0.08, blue: 0.13),
-                    Color(red: 0.01, green: 0.03, blue: 0.06)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            WallpaperGradient(kind: settings.wallpaper)
+                .ignoresSafeArea()
 
             ambientGlow
                 .ignoresSafeArea()
@@ -201,7 +193,6 @@ struct ContentView: View {
             }
         }
         .frame(width: 280, height: 280)
-        .rotationEffect(.degrees(ringRotation))
         .gesture(
             DragGesture(minimumDistance: 0)
                 .onChanged { value in
@@ -211,27 +202,19 @@ struct ContentView: View {
     }
 
     private func handleRingDrag(_ value: DragGesture.Value) {
-        let center = CGPoint(x: 140, y: 140)
-        let delta = CGVector(dx: value.location.x - center.x,
-                             dy: value.location.y - center.y)
-        let angle = atan2(delta.dy, delta.dx) * 180 / .pi
-        var dRotation = angle - ringRotation
-        if dRotation > 180 { dRotation -= 360 }
-        if dRotation < -180 { dRotation += 360 }
-
-        let ticks = Int(dRotation / 3.0)
-        if ticks != 0 {
-            let newBrightness = brightness - Double(ticks) * 0.01
-            let clamped = Swift.min(1.0, Swift.max(0.0, newBrightness))
-            if clamped != brightness {
-                brightness = clamped
-                hapticTick.selectionChanged()
-                if bluetooth.isPowerOn {
-                    streamBrightness()
-                }
+        // Vertical drag on the ring: dragging UP raises brightness, DOWN lowers it.
+        // This is a simple up/down control, not a rotating dial.
+        let dy = value.translation.height
+        let delta = -dy / 200.0   // 200pt of travel = full range
+        let newBrightness = brightness + delta
+        let clamped = Swift.min(1.0, Swift.max(0.0, newBrightness))
+        if abs(clamped - brightness) > 0.001 {
+            brightness = clamped
+            hapticTick.selectionChanged()
+            if bluetooth.isPowerOn {
+                streamBrightness()
             }
         }
-        ringRotation = angle
     }
 
     // MARK: Power Button
@@ -300,7 +283,7 @@ struct ContentView: View {
                         applyColor(newValue)
                     }
             }
-            .preferredColorScheme(.dark)
+            .preferredColorScheme(settings.colorScheme)
         }
     }
 

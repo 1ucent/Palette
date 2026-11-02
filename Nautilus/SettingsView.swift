@@ -125,8 +125,11 @@ enum WallpaperKind: String, CaseIterable {
 
 struct WallpaperGradient: View {
     let kind: String
+    @Environment(\.colorScheme) private var colorScheme
 
-    private var colors: [Color] {
+    private var isLight: Bool { colorScheme == .light }
+
+    private var darkColors: [Color] {
         switch kind {
         case "ocean":
             return [Color(red: 0.02, green: 0.05, blue: 0.09),
@@ -151,7 +154,33 @@ struct WallpaperGradient: View {
         }
     }
 
+    private var lightColors: [Color] {
+        switch kind {
+        case "ocean":
+            return [Color(red: 0.78, green: 0.88, blue: 0.96),
+                    Color(red: 0.66, green: 0.82, blue: 0.93),
+                    Color(red: 0.88, green: 0.94, blue: 0.99)]
+        case "midnight":
+            return [Color(red: 0.82, green: 0.83, blue: 0.92),
+                    Color(red: 0.70, green: 0.72, blue: 0.86),
+                    Color(red: 0.90, green: 0.91, blue: 0.97)]
+        case "ember":
+            return [Color(red: 0.98, green: 0.90, blue: 0.85),
+                    Color(red: 0.96, green: 0.82, blue: 0.74),
+                    Color(red: 0.99, green: 0.94, blue: 0.91)]
+        case "aurora":
+            return [Color(red: 0.80, green: 0.94, blue: 0.90),
+                    Color(red: 0.74, green: 0.86, blue: 0.95),
+                    Color(red: 0.90, green: 0.96, blue: 0.98)]
+        default:
+            return [Color(red: 0.78, green: 0.88, blue: 0.96),
+                    Color(red: 0.66, green: 0.82, blue: 0.93),
+                    Color(red: 0.88, green: 0.94, blue: 0.99)]
+        }
+    }
+
     var body: some View {
+        let colors = isLight ? lightColors : darkColors
         LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
     }
 }
